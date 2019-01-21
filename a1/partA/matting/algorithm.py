@@ -23,7 +23,7 @@ import cv2 as cv
 #########################################
 ## PLACE YOUR CODE BETWEEN THESE LINES ##
 #########################################
-
+import os
 
 #########################################
 
@@ -126,7 +126,11 @@ class Matting:
         #########################################
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
         #########################################
-        
+        loader = cv.imread(fileName)
+        if loader is None:
+            msg = 'Error: File ' + fileName + ' at key ' + key + ' reading Failed!'
+        else:
+            self._images[key] = loader
 
         #########################################
         return success, msg
@@ -145,7 +149,11 @@ class Matting:
         #########################################
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
         #########################################
-
+        cv.imwrite(fileName, self._images[key])
+        if os.path.exists(fileName):
+            success = True
+        else:
+            msg = 'Error: File ' + fileName + ' at key ' + key + ' writing Failed!'
 
         #########################################
         return success, msg
