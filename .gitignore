@@ -1,0 +1,13 @@
+
+*.tif
+*.so
+*.cache-3
+*.xml
+*.def
+*.6
+*.0
+a1/viscomp/libopencv_imgcodecs.so.3.1
+*.1
+*.2
+*.afm
+a1/viscomp/*
