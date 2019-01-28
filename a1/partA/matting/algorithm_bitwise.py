@@ -1,10 +1,10 @@
-## CSC320 Winter 2019 
+## CSC320 Winter 2019
 ## Assignment 1
 ## (c) Kyros Kutulakos
 ##
 ## DISTRIBUTION OF THIS CODE ANY FORM (ELECTRONIC OR OTHERWISE,
-## AS-IS, MODIFIED OR IN PART), WITHOUT PRIOR WRITTEN AUTHORIZATION 
-## BY THE INSTRUCTOR IS STRICTLY PROHIBITED. VIOLATION OF THIS 
+## AS-IS, MODIFIED OR IN PART), WITHOUT PRIOR WRITTEN AUTHORIZATION
+## BY THE INSTRUCTOR IS STRICTLY PROHIBITED. VIOLATION OF THIS
 ## POLICY WILL BE CONSIDERED AN ACT OF ACADEMIC DISHONESTY
 
 ##
@@ -17,7 +17,7 @@ import scipy.linalg as sp
 import cv2 as cv
 
 # If you wish to import any additional modules
-# or define other utility functions, 
+# or define other utility functions,
 # include them here
 
 #########################################
@@ -32,7 +32,7 @@ import numpy as np
 #
 # The Matting Class
 #
-# This class contains all methods required for implementing 
+# This class contains all methods required for implementing
 # triangulation matting and image compositing. Description of
 # the individual methods is given below.
 #
@@ -45,8 +45,8 @@ class Matting:
     # The class constructor
     #
     # When called, it creates a private dictionary object that acts as a container
-    # for all input and all output images of the triangulation matting and compositing 
-    # algorithms. These images are initialized to None and populated/accessed by 
+    # for all input and all output images of the triangulation matting and compositing
+    # algorithms. These images are initialized to None and populated/accessed by
     # calling the the readImage(), writeImage(), useTriangulationResults() methods.
     # See function run() in run.py for examples of their usage.
     #
@@ -97,7 +97,7 @@ class Matting:
             'compOut': {'msg': 'Image filename for Composite Color', 'default': ['comp.tif']},
         }
 
-    # Copy the output of the triangulation matting algorithm (i.e., the 
+    # Copy the output of the triangulation matting algorithm (i.e., the
     # object Color and object Alpha images) to the images holding the input
     # to the compositing algorithm. This way we can do compositing right after
     # triangulation matting without having to save the object Color and object
@@ -107,7 +107,7 @@ class Matting:
             self._images['colIn'] = self._images['colOut'].copy()
             self._images['alphaIn'] = self._images['alphaOut'].copy()
 
-    # If you wish to create additional methods for the 
+    # If you wish to create additional methods for the
     # Matting class, include them here
 
     #########################################
@@ -116,8 +116,8 @@ class Matting:
 
     #########################################
 
-    # Use OpenCV to read an image from a file and copy its contents to the 
-    # matting instance's private dictionary object. The key 
+    # Use OpenCV to read an image from a file and copy its contents to the
+    # matting instance's private dictionary object. The key
     # specifies the image variable and should be one of the
     # strings in lines 54-63. See run() in run.py for examples
     #
@@ -146,9 +146,9 @@ class Matting:
         #########################################
         return success, msg
 
-    # Use OpenCV to write to a file an image that is contained in the 
+    # Use OpenCV to write to a file an image that is contained in the
     # instance's private dictionary. The key specifies the which image
-    # should be written and should be one of the strings in lines 54-63. 
+    # should be written and should be one of the strings in lines 54-63.
     # See run() in run.py for usage examples
     #
     # The routine should return True if it succeeded. If it did not, it should
@@ -177,12 +177,12 @@ class Matting:
         return success, msg
 
     # Method implementing the triangulation matting algorithm. The
-    # method takes its inputs/outputs from the method's private dictionary 
-    # ojbect. 
+    # method takes its inputs/outputs from the method's private dictionary
+    # ojbect.
     def triangulationMatting(self):
         """
 success, errorMessage = triangulationMatting(self)
-        
+
         Perform triangulation matting. Returns True if successful (ie.
         all inputs and outputs are valid) and False if not. When success=False
         an explanatory error message should be returned.
@@ -211,36 +211,34 @@ success, errorMessage = triangulationMatting(self)
         try:
             colOut = np.zeros(shape)
             alphaOut = np.zeros(shape[:2])
-            '''
-            This piece of code require python3, numpy 1.14+. Which means it can only run  on python3.7 on cdf computer
-            wholemx = np.tile(matrix, (shape[:2])).reshape(shape[0],shape[1], 6,3)
-            neg_B = B * -1
-            matrix_111 = np.concatenate((wholemx, neg_B[..., np.newaxis]), axis=-1)
-            try_pinv = np.linalg.pinv(matrix_111)
-            reshape_deltaC = deltaC.reshape(shape[0],shape[1], 6, 1)
-            rst = np.matmul(try_pinv, reshape_deltaC).reshape(shape[0],shape[1], 4)
-            sample_colOut = rst[:,:,3]
-            sample_alpha = rst[:,:,1]
-            '''
-            # Using the formula on essay SIGGRAPH 1996
-            # alpha = 1- ((R_f1 - R_f2)(R_k1-R_k2) + (G_f1 - G_f2)(G_k1-G_k2) + (B_f1 - B_f2)(B_k1-B_k2)) / (R_k1 - R_k2)^2 + (G_k1 - G_k2)^2 + (B_k1 - B_k2)^2
-            step1 = np.multiply(self._images['compA'] - self._images['compB'],
-                                self._images['backA'] - self._images['backB'])
-            nomi = step1.sum(axis=-1)
-            step2 = np.multiply(self._images['backA'] - self._images['backB'],
-                                self._images['backA'] - self._images['backB'])
-            deno = step2.sum(axis=-1)
-            deno[deno == 0] = 0.00000001
-            one_minus_alpha = np.divide(nomi, deno)  # type: np.array()
-            one_minus_alpha[one_minus_alpha > 1] = 1
-            alpha = 1 - one_minus_alpha
-            one_minus_alpha = one_minus_alpha
-            C0 = self._images['compA'] - np.multiply(np.expand_dims(one_minus_alpha, axis=-1), self._images['backA'])
-            #C0 = C0 * alpha[:,:,None].repeat(3,2)
+
+
+                #RGB bitwise. But it's so slow
+            for i in range(colOut.shape[0]):
+                for j in range(colOut.shape[1]):
+                    if i == 829 and j == 520:
+                        print 1
+                    if i == 810 and j == 40:
+                        print 1
+                    aval1 = B[i,j]
+                    aval2 = self._images['compA'][i][j]
+                    aval3 = self._images['backB'][i][j]
+                    ver_neg_B = B[i,j].reshape(6,1) * -1
+                    coeff_Fprime = np.hstack((matrix, ver_neg_B))
+                    deltaC_ij = deltaC[i,j]
+                    #deltaC_ij =coeff_Fprime * f_prime
+                    #(C.T * C)^-1 * C^T * d = F
+                    #F = pinv(coeff_Fprime) * deltaC_ij
+                    something = np.linalg.pinv(coeff_Fprime)
+                    unclip_Fprime = np.dot(np.linalg.inv(np.dot(coeff_Fprime.T, coeff_Fprime)), np.dot(coeff_Fprime.T, deltaC_ij))
+                    Fprime = np.clip(unclip_Fprime, 0, 1)
+                    colOut[i, j] = Fprime[:3]#Fprime[:3] / (Fprime[-1] + 0.00000001)#divided by zero?
+                    alphaOut[i,j] = Fprime[-1]
+
 
             # unnormalized_colOut = np.clip(colOut, 0, 1)
-            colOut = np.clip(C0, 0, 1)
-            alphaOut = np.clip(alpha, 0, 1)
+            colOut = np.clip(colOut, 0, 1)
+            alphaOut = np.clip(alphaOut, 0, 1)
         except Exception as e:
             msg = "triangulationMatting Error! Reason: {}".format(e)
             return success, msg
@@ -259,27 +257,10 @@ success, errorMessage = triangulationMatting(self)
         msg = 'triangulationMatting completed!'
         return success, msg
 
-    '''
-                    RGB bitwise. But it's so slow
-                        for i in range(colOut.shape[0]):
-                        for j in range(colOut.shape[1]):
-                        ver_neg_B = B[i,j].reshape(6,1) * -1
-                        coeff_Fprime = np.hstack((matrix, ver_neg_B))
-                        deltaC_ij = deltaC[i,j]
-                        #deltaC_ij =coeff_Fprime * f_prime
-                        #(C.T * C)^-1 * C^T * d = F
-                        #F = pinv(coeff_Fprime) * deltaC_ij
-                        something = np.linalg.pinv(coeff_Fprime)
-                        unclip_Fprime = np.dot(np.linalg.inv(np.dot(coeff_Fprime.T, coeff_Fprime)), np.dot(coeff_Fprime.T, deltaC_ij))
-                        Fprime = np.clip(unclip_Fprime, 0, 1)
-                        colOut[i, j] = Fprime[:3]#Fprime[:3] / (Fprime[-1] + 0.00000001)#divided by zero?
-                        alphaOut[i,j] = Fprime[-1]
-                '''
-
     def createComposite(self):
         """
 success, errorMessage = createComposite(self)
-        
+
         Perform compositing. Returns True if successful (ie.
         all inputs and outputs are valid) and False if not. When success=False
         an explanatory error message should be returned.
