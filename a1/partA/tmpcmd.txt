@@ -1,0 +1,43 @@
+python viscomp.py --matting \
+                --backA test_images/tiny/flowers-backA.jpg \
+                --backB test_images/tiny/flowers-backB.jpg \
+                --compA test_images/tiny/flowers-compA.jpg \
+                --compB test_images/tiny/flowers-compB.jpg \
+                --alphaOut alpha.tif \
+                --colOut col.tif
+
+./viscomp/viscomp --matting \
+                --backA test_images/small/flowers-backA.jpg \
+                --backB test_images/small/flowers-backB.jpg \
+                --compA test_images/small/flowers-compA.jpg \
+                --compB test_images/small/flowers-compB.jpg \
+                --alphaOut test_images/small/alpha.tif \
+                --colOut test_images/small/col.tif
+
+
+python viscomp.py --matting \
+                --backA photo/8/back1.jpg \
+                --backB photo/8/back2.jpg \
+                --compA photo/8/comp1.jpg \
+                --compB photo/8/comp2.jpg \
+                --alphaOut photo/8/alpha.tif \
+                --colOut photo/8/col.tif
+
+./viscomp/viscomp --matting \
+                --backA photo/1/back1.jpg \
+                --backB photo/1/back2.jpg \
+                --compA photo/1/comp1.jpg \
+                --compB photo/1/comp2.jpg \
+                --alphaOut photo/1/alpha.tif \
+                --colOut photo/1/col.tif
+
+./viscomp/viscomp --matting \
+                --backA photo/2/back1.jpg \
+                --backB photo/2/back2.jpg \
+                --compA photo/2/comp1.jpg \
+                --compB photo/2/comp2.jpg \
+                --alphaOut photo/2/alpha.tif \
+                --colOut photo/2/col.tif
+
+
+rename 's/\.JPG$/\.jpg/' *.JPG
