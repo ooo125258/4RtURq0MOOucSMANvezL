@@ -199,9 +199,10 @@ def computeNormal(psiHatP=None, filledImage=None, fillFront=None):
     cut_x_patch, valid = copyutils.getWindow(filledImage_scharrx, center, w)
     cut_y_patch, valid = copyutils.getWindow(filledImage_scharry, center, w)
 
-    magnitude = np.sqrt(np.multiply(sobelx, sobelx) + np.multiply(sobely, sobely))
+    magnitude = np.sqrt(np.multiply(cut_x_patch, cut_x_patch)
+                        + np.multiply(cut_y_patch, cut_y_patch))
     
-    if (np.count_mpmzero(psiHatP.filled() <= 1):
+    if (np.count_mpmzero(psiHatP.filled() <= 1)):
         Ny, Nx = None, None
     else:
         Ny = filledImage_scharrx[center] / magnitude
