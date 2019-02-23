@@ -118,24 +118,28 @@ def computeGradient(psiHatP=None, inpaintedImage=None, filledImage=None):
     Dy = 1
     Dx = 0
     valid = None
-    gray = cv.cvtColor(psiHatP.pixels(), cv.COLOR_BGR2GRAY)
-    scharrx = cv.Scharr(gray, cv.CV_32F, 1, 0)
-    scharry = cv.Scharr(gray, cv.CV_32F, 0, 1)
+    #Gradient from the whole gray image, and cut from it.
+    Image_gray = cv.cvtColor(inpaintedImage, cv.COLOR_BGR2GRAY)
+    Image_scharrx = cv.Scharr(Image_gray, cv.CV_32F, 1, 0)
+    Image_scharry = cv.Scharr(Image_gray, cv.CV_32F, 0, 1)
 
+    #get coord of p
     center = [psiHatP.row(), psiHatP.col()]
     w = psiHatP.radius()
 
-    #cut_x_patch, valid = copyutils.getWindow(scharrx, center, w)
-    #cut_y_patch, valid = copyutils.getWindow(scharry, center, w)
+    #cut!
+    cut_x_patch_gray, valid = copyutils.getWindow(Image_scharrx, center, w)
+    cut_y_patch_gray, valid = copyutils.getWindow(Image_scharry, center, w)
+    #Filled?
     filled_patch, valid = copyutils.getWindow(filledImage, center, w) / 255
-    cut_x_available = scharrx * filled_patch
-    cut_y_available = scharry * filled_patch
+    cut_x_available = cut_x_patch_gray * filled_patch
+    cut_y_available = cut_y_patch_gray * filled_patch
 
     squared_sum = np.multiply(cut_x_available, cut_x_available) \
                   + np.multiply(cut_y_available, cut_y_available)
     idx = np.unravel_index(squared_sum.argmax(), squared_sum.shape)
-    Dx = scharrx[idx]
-    Dy = scharry[idx]
+    Dx = cut_x_patch_gray[idx]
+    Dy = cut_y_patch_gray[idx]
     #########################################
     
     return Dy, Dx
@@ -186,5 +190,21 @@ def computeNormal(psiHatP=None, filledImage=None, fillFront=None):
     Ny = 0
     Nx = 1    
     #########################################
+    #The fill front only shows a line. It may points to a different direction.
+    center = [psiHatP.row(), psiHatP.col()]
+    w = psiHatP.radius()
+    
+    filledImage_scharrx = cv.Scharr(filledImage, cv.CV_32F, 1, 0)
+    filledImage_scharry = cv.Scharr(filledImage, cv.CV_32F, 0, 1)
+    cut_x_patch, valid = copyutils.getWindow(filledImage_scharrx, center, w)
+    cut_y_patch, valid = copyutils.getWindow(filledImage_scharry, center, w)
 
+    magnitude = np.sqrt(np.multiply(sobelx, sobelx) + np.multiply(sobely, sobely))
+    
+    if (np.count_mpmzero(psiHatP.filled() <= 1):
+        Ny, Nx = None, None
+    else:
+        Ny = filledImage_scharrx[center] / magnitude
+        Nx = -filledImage_scharry[center] / magnitude
+    
     return Ny, Nx
