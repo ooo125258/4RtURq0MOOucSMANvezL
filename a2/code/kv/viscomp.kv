@@ -186,6 +186,19 @@ RootWidget:
 ## YOU CAN PLACE ADDITIONAL SPECS BETWEEN THESE LINES ##
 ########################################################
 
+    # The widget for the 'Run' button
+    Button:
+        size_hint: 0.119, 0.119
+        pos_hint: {'x':0, 'y':0}
+        orientation: 'vertical'
+        # option calibrate
+        markup: True
+        text: '[size=30][b]Run[/b]'
+
+        # EVENT HANDLING INSTRUCTIONS for this button:
+        # If this button is pressed, call method run_algorithm() of the
+        # RootWidget class
+        on_press: root.run_algorithm()
 
 ########################################################
 
@@ -250,7 +263,7 @@ RootWidget:
 ########################################################
 ## YOU CAN PLACE ADDITIONAL SPECS BETWEEN THESE LINES ##
 ########################################################
-
+        on_touch_up: root.on_touch_up_callback(args[1])
 ########################################################
 
 # This widget is of the user-defined class LoadDialog, defined in

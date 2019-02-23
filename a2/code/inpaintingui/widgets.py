@@ -140,7 +140,23 @@ class RootWidget(FloatLayout):
 #########################################
 ## PLACE YOUR CODE BETWEEN THESE LINES ##
 #########################################
+    # Run the algorithm associate with the GUI's current mode for Max iteration
+    def run_algorithm(self):
+        # the algorithm is executed by calling the method of
+        # the InpaintingControl class
+        ok, msg = self.inpaintingControl.runAlgorithm(self.ids.imviewer, maxIterations=self.inpaintingControl.maxIterations())
+        if not ok:
+            # if the method returned an error, display a popup
+            # with an error message
+            self.show_error_popup(self.currentModeMsg(), msg)
+        else:
+            # if there were no errors, display the current image
+            # we do this to ensure that if the currently-displayed
+            # image is an output image of the algorithm, the image is
+            # updated with the algorithm's results
+            self.display_current_image()
 
+        return
 #########################################
         
 

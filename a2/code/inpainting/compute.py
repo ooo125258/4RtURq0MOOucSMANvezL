@@ -116,7 +116,26 @@ def computeGradient(psiHatP=None, inpaintedImage=None, filledImage=None):
     
     # Replace these dummy values with your own code
     Dy = 1
-    Dx = 0    
+    Dx = 0
+    valid = None
+    gray = cv.cvtColor(psiHatP.pixels(), cv.COLOR_BGR2GRAY)
+    scharrx = cv.Scharr(gray, cv.CV_32F, 1, 0)
+    scharry = cv.Scharr(gray, cv.CV_32F, 0, 1)
+
+    center = [psiHatP.row(), psiHatP.col()]
+    w = psiHatP.radius()
+
+    #cut_x_patch, valid = copyutils.getWindow(scharrx, center, w)
+    #cut_y_patch, valid = copyutils.getWindow(scharry, center, w)
+    filled_patch, valid = copyutils.getWindow(filledImage, center, w) / 255
+    cut_x_available = scharrx * filled_patch
+    cut_y_available = scharry * filled_patch
+
+    squared_sum = np.multiply(cut_x_available, cut_x_available) \
+                  + np.multiply(cut_y_available, cut_y_available)
+    idx = np.unravel_index(squared_sum.argmax(), squared_sum.shape)
+    Dx = scharrx[idx]
+    Dy = scharry[idx]
     #########################################
     
     return Dy, Dx

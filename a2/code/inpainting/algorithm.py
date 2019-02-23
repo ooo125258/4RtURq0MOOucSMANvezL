@@ -34,7 +34,7 @@ from debug import *
 
             
 #########################################
-
+import os
 
 #########################################
 #
@@ -98,7 +98,23 @@ class Inpainting:
 
         # COPY INTO THIS SPACE YOUR IMPLEMENTATION OF THIS FUNCTION
         # FROM YOUR algorithm.py of A1
+        success = False
+        msg = 'Placeholder'
 
+        #########################################
+        ## PLACE YOUR CODE BETWEEN THESE LINES ##
+        #########################################
+        loader = cv.imread(fileName, -1)
+        if loader is None:
+            msg = 'Error: File ' + fileName + ' at key ' + key + ' reading Failed!'
+        else:
+            loader = loader.astype(np.uint8)#It must be uint8
+            # loader = cv.cvtColor(loader, cv.COLOR_BGR2RGB).astype(np.float) / 255
+            # loader = cv.normalize(loader, loader, alpha=0, beta=1, norm_type=cv.NORM_MINMAX,dtype=cv.CV_32F)
+            # loader = cv.normalize(loader, None, 1, 0, cv.NORM_MINMAX)
+            self._images[key] = loader
+            success = True
+            msg = "Img" + fileName + ' at key ' + key + " loaded."
         #########################################
         return success, msg
 
@@ -110,12 +126,23 @@ class Inpainting:
     # return False, along with an error message
     def writeImage(self, fileName, key):
         success = False
-        msg = 'No Image Available'
-
+        msg = 'Placeholder'
+    
         #########################################
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
-        #########################################
-
+        #########################################Input: 0-1 picture
+        loader = self._images[key]
+        if len(self._images[key].shape) >= 3:
+            loader = loader.astype(np.uint8)
+            # loader = cv.cvtColor(loader, cv.COLOR_RGB2BGR)
+        else:
+            loader = loader.astype(np.uint8)
+        cv.imwrite(fileName, loader)
+        if os.path.exists(fileName):
+            success = True
+            msg = "Img" + fileName + ' at key ' + key + " written!"
+        else:
+            msg = 'Error: File ' + fileName + ' at key ' + key + ' writing Failed!'
         #########################################
         return success, msg
 
@@ -154,8 +181,31 @@ success, errorMessage = exampleBasedInpainting(self)
         ## source much be a 3-channel uint8 image and alpha must be a 
         ## one-channel uint8 image.
         
-        success = True
-
+        #ERROR check:
+        img_photos = ['source', 'alpha']
+        for key in img_photos:
+            if self._images[key] is None:
+                success = False
+                msg = 'exampleBasedInpainting Error:  key ' + key + ' image not found!'
+                return success, msg
+        
+        if len(self._images['source'].shape) != 3:
+            msg = "source not 3 channel!"
+            return success, msg
+        elif len(self._images['alpha'].shape) != 2:
+            msg = "alpha not 1 channel!"
+            return success, msg
+        elif self._images['source'].shape[:2] != self._images['alpha'].shape:
+            msg = "Source and alpha don't have the same dimesions: source " \
+                  "{} when alpha {}.".format(self._images['source'].shape[:2],
+                                             self._images['alpha'].shape)
+            return success, msg
+        elif self._images['source'].dtype != np.uint8:
+            msg = "Source image is not uint8"
+            return success, msg
+        elif self._images['alpha'].dtype != np.uint8:
+            msg = "Alpha image is not uint8"
+            return success, msg
         #########################################
 
         #
@@ -202,7 +252,6 @@ success, errorMessage = exampleBasedInpainting(self)
         self.clearChangedInput()
         
         self.debug.initDisplay()
-        
         return success, msg
 
 
