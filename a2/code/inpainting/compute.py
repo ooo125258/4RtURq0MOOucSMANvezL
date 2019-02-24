@@ -75,7 +75,8 @@ def computeC(psiHatP=None, filledImage=None, confidenceImage=None):
     # Replace this dummy value with your own code
     C = 1    
     #########################################
-    
+    conf, valid = copyutils.getWindow(confidenceImage, psiHatP._coords, psiHatP._w)
+    C = np.sum(conf) / np.sum(valid)
     return C
 
 #########################################
@@ -113,7 +114,7 @@ def computeGradient(psiHatP=None, inpaintedImage=None, filledImage=None):
     #########################################
     ## PLACE YOUR CODE BETWEEN THESE LINES ##
     #########################################
-    
+
     # Replace these dummy values with your own code
     Dy = 1
     Dx = 0
@@ -124,22 +125,23 @@ def computeGradient(psiHatP=None, inpaintedImage=None, filledImage=None):
     Image_scharry = cv.Scharr(Image_gray, cv.CV_32F, 0, 1)
 
     #get coord of p
-    center = [psiHatP.row(), psiHatP.col()]
+    center = (psiHatP.row(), psiHatP.col())
     w = psiHatP.radius()
 
     #cut!
     cut_x_patch_gray, valid = copyutils.getWindow(Image_scharrx, center, w)
     cut_y_patch_gray, valid = copyutils.getWindow(Image_scharry, center, w)
     #Filled?
-    filled_patch, valid = copyutils.getWindow(filledImage, center, w) / 255
+    filledImage = filledImage / 255
+    filled_patch, valid = copyutils.getWindow(filledImage, center, w)
     cut_x_available = cut_x_patch_gray * filled_patch
     cut_y_available = cut_y_patch_gray * filled_patch
 
     squared_sum = np.multiply(cut_x_available, cut_x_available) \
                   + np.multiply(cut_y_available, cut_y_available)
     idx = np.unravel_index(squared_sum.argmax(), squared_sum.shape)
-    Dx = cut_x_patch_gray[idx]
-    Dy = cut_y_patch_gray[idx]
+    Dx = cut_x_patch_gray[idx[0], idx[1]]
+    Dy = cut_y_patch_gray[idx[0], idx[1]]
     #########################################
     
     return Dy, Dx
@@ -186,26 +188,48 @@ def computeNormal(psiHatP=None, filledImage=None, fillFront=None):
     ## PLACE YOUR CODE BETWEEN THESE LINES ##
     #########################################
     
+    Nx, Ny = None, None
+    pcord = (psiHatP.row(), psiHatP.col())
+    w = psiHatP.radius()
+    imagei, imageb = copyutils.getWindow(filledImage, pcord, w)
+    sx = cv.Sobel(imagei, cv.CV_64F, 1, 0)
+    sy = cv.Sobel(imagei, cv.CV_64F, 0, 1)
+    x, y = sx[w, w], sy[w, w]
+    i = np.sqrt(x ** 2 + y ** 2)
+    if i != 0:
+        Nx = x / i
+        Ny = -y / i
+
+    #########################################
+
+
+    return Ny, Nx
+    
     # Replace these dummy values with your own code
     Ny = 0
     Nx = 1    
     #########################################
     #The fill front only shows a line. It may points to a different direction.
-    center = [psiHatP.row(), psiHatP.col()]
+    center = (psiHatP.row(), psiHatP.col())
     w = psiHatP.radius()
-    
+    filledImage = filledImage / 255
     filledImage_scharrx = cv.Scharr(filledImage, cv.CV_32F, 1, 0)
     filledImage_scharry = cv.Scharr(filledImage, cv.CV_32F, 0, 1)
     cut_x_patch, valid = copyutils.getWindow(filledImage_scharrx, center, w)
     cut_y_patch, valid = copyutils.getWindow(filledImage_scharry, center, w)
 
-    magnitude = np.sqrt(np.multiply(cut_x_patch, cut_x_patch)
-                        + np.multiply(cut_y_patch, cut_y_patch))
-    
-    if (np.count_mpmzero(psiHatP.filled() <= 1)):
+    magnitude = np.sqrt(cut_x_patch[w,w] ** 2 + cut_y_patch[w,w] ** 2)
+
+    cut_fillFront, valid = copyutils.getWindow(fillFront, center, w)
+    if np.count_nonzero(cut_fillFront) <= 1:
         Ny, Nx = None, None
     else:
-        Ny = filledImage_scharrx[center] / magnitude
-        Nx = -filledImage_scharry[center] / magnitude
+        if magnitude != 0:
+            Ny = filledImage_scharrx[center] / magnitude
+            Nx = -filledImage_scharry[center] / magnitude
+        else:
+            Ny = None
+            Nx = None
     
     return Ny, Nx
+
