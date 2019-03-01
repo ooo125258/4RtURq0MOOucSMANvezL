@@ -1,0 +1,6 @@
+This is the report of the result.
+The first one is good.
+The first reason is that it can find all reference from the background. 
+The second reason is that the boundary between two background elements are very clear. This is the problem for the example below. As the gradient is clear, the algorithm will fill the unfilled bounadry first from existed boundary. However, when gradient is not clear,, the algorithm will cross the boundary and fill the wrong place, like the moon example in slides.
+
+The one with cat is bad. The cat I selected is very dark and it's color is close to the sofa without enough light. As a result, the edge between cat and the sofa is not very clear. The algorihm will firstly try to find the area of the head of the cat, as the gradient is higher and the confidence is also higher. When the psihatP closer to the neck, the gradient to identify the cat and sofa is too weak to move the next psiHatP to other place. As a result, the algorithm will still identify the part as window(as it truly contains some pixels from windows when it filled before) and failed to fill in sofa.

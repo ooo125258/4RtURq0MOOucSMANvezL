@@ -2,8 +2,8 @@
 Assignment 2 Checklist/Grading sheet
 -------------------------------------
 
-Name: 
-Student ID:
+Name: Chuanqi Sun
+Student ID: 1001369404
 
 ------------------------------------------------------------------------------
 A. PLEASE ANSWER THE FOLLOWING QUESTIONS (YOUR ASSIGNMENT WILL NOT BE MARKED
@@ -13,14 +13,14 @@ A. PLEASE ANSWER THE FOLLOWING QUESTIONS (YOUR ASSIGNMENT WILL NOT BE MARKED
 1. I verify that my submission adheres to the Academic Honesty policy 
    stated in http://www.cs.toronto.edu/~yani/csc320/policy.html
 
-   ___Yes   ___No
+   __X_Yes   ___No
 
 2. I copied, modified, re-wrote, or re-purposed source code that was not 
    originally written by me (in Python, Java, C++ or any other programming 
    language). See http://www.cs.toronto.edu/~yani/csc320/policy.html
    for policy regarding uses of such pre-existing code
 
-   ___Yes   ___No
+   ___Yes   _X__No
       
    If you checked yes, please supply the following
    
@@ -36,7 +36,7 @@ A. PLEASE ANSWER THE FOLLOWING QUESTIONS (YOUR ASSIGNMENT WILL NOT BE MARKED
    See http://www.cs.toronto.edu/~yani/csc320/policy.html for
    policy on assignments done in collaboration
 
-   ___Yes   ___No
+   ___Yes   __X_No
 
    If you checked yes, please supply the following
 
@@ -56,18 +56,18 @@ B. PLACE AN (X) IN FRONT OF PORTIONS OF THE ASSIGNMENT THAT YOU COMPLETED IN
    YOUR PARTIAL IMPLEMENTATION, DETAILED COMMENTS IN YOUR CODE, ETC) THE MORE 
    LIKELY IT IS WE WILL BE ABLE TO MAKE AN ACCURATE ASSESSMENT
 
-___   (  5 marks) Part A.1    Run button 
+_X__   (  5 marks) Part A.1    Run button 
 
-___   ( 10 marks) Part A.2    Crosshairs refresh
+_X__   ( 10 marks) Part A.2    Crosshairs refresh
 
-___   ( 30 marks) Part B.1.1  computeGradient() 
+_X__   ( 30 marks) Part B.1.1  computeGradient() 
 
-___   ( 30 marks) Part B.1.2  computeNormal()
+_X__   ( 30 marks) Part B.1.2  computeNormal()
 
-___   ( 10 marks) Part B.1.3  computeC()
+_X__   ( 10 marks) Part B.1.3  computeC()
 
-___   (  5 marks) Part B.2.1  experimental evaluation
+_X__   (  5 marks) Part B.2.1  experimental evaluation
 
-___   ( 10 marks) Part B.2.2  PDF report
+_X__   ( 10 marks) Part B.2.2  PDF report
 
 ------------------------------------------------------------------------------ 

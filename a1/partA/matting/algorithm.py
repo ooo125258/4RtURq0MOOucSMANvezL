@@ -236,7 +236,7 @@ success, errorMessage = triangulationMatting(self)
             alpha = 1 - one_minus_alpha
             one_minus_alpha = one_minus_alpha
             C0 = self._images['compA'] - np.multiply(np.expand_dims(one_minus_alpha, axis=-1), self._images['backA'])
-            #C0 = C0 * alpha[:,:,None].repeat(3,2)
+            #C0 = C0 * alpha[:,:,None].repeat(3,2) #Does alpha
 
             # unnormalized_colOut = np.clip(colOut, 0, 1)
             colOut = np.clip(C0, 0, 1)
@@ -311,7 +311,6 @@ success, errorMessage = createComposite(self)
         self._images['compOut'] = compOut
         success = True
         msg = 'createComposite completed!'
-        print 'createComposite completed!'
         #########################################
 
         return success, msg
