@@ -135,8 +135,7 @@ def main(argv, prog=''):
     success, args, unprocessedArgv, msg = parseArguments(argv, mat, prog)
 
     if not success:
-        print
-        'Error: Argument parsing: ', msg
+        print 'Error: Argument parsing: ', msg
         return success, unprocessedArgv
 
     # Initialize the variables for measuring timings
@@ -160,8 +159,7 @@ def main(argv, prog=''):
                              (args.compB[0], 'compB')]:
             success, msg = mat.readImage(fname, key)
             if not success:
-                print
-                'Error: %s' % msg
+                print                 'Error: %s' % msg
                 return success, unprocessedArgv
 
         # Get the value of the openCV timer
@@ -171,12 +169,10 @@ def main(argv, prog=''):
         # returns a tuple whose first element is True iff the routine
         # was successfully executed and the second element is
         # an error message string (if the routine failed)
-        print
-        'Triangulation matting...'
+        print         'Triangulation matting...'
         success, text = mat.triangulationMatting()
         if not success:
-            print
-            'Error: Triangulation matting routine failed: %s' % text
+            print             'Error: Triangulation matting routine failed: %s' % text
             return success, unprocessedArgv
 
         # Get the value of the openCV timer
@@ -192,10 +188,8 @@ def main(argv, prog=''):
                              (args.alphaOut[0], 'alphaOut')]:
             success, msg = mat.writeImage(fname, key)
             if not success:
-                print
-                msg
-                print
-                'Error: Image %s cannot be written' % fname
+                print                 msg
+                print                 'Error: Image %s cannot be written' % fname
                 return success, unprocessedArgv
 
         # Get the value of the openCV timer
@@ -218,12 +212,10 @@ def main(argv, prog=''):
                              (args.backIn[0], 'backIn')]:
             success, msg = mat.readImage(fname, key)
             if not success:
-                print
-                'Error: %s' % msg
+                print                 'Error: %s' % msg
                 return success, unprocessedArgv
 
-        print
-        'Compositing...'
+        print         'Compositing...'
         t2 = cv.getTickCount()
         # Run the compositing algorithm. The routine
         # returns a tuple whose first element is True iff the routine
@@ -231,17 +223,14 @@ def main(argv, prog=''):
         # an error message string (if the routine failed)
         success, text = mat.createComposite()
         if not success:
-            print
-            'Error: %s' % text
+            print             'Error: %s' % text
             return success, unprocessedArgv
 
         t3 = cv.getTickCount()
         success, msg = mat.writeImage(args.compOut[0], 'compOut')
         if not success:
-            print
-            msg
-            print
-            'Error: Image %s cannot be written' % fname
+            print             msg
+            print             'Error: Image %s cannot be written' % fname
             return success, unprocessedArgv
         t4 = cv.getTickCount()
 

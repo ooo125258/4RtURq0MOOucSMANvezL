@@ -41,3 +41,10 @@ python viscomp.py --matting \
 
 
 rename 's/\.JPG$/\.jpg/' *.JPG
+python viscomp.py --matting \
+                --backA test_images/small/flowers-backA.jpg \
+                --backB test_images/small/flowers-backB.jpg \
+                --compA test_images/small/flowers-compA.jpg \
+                --compB test_images/small/flowers-compB.jpg \
+                --alphaOut test_images/small/alpha.tif \
+                --colOut test_images/small/col.tif
