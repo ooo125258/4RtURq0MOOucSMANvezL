@@ -132,30 +132,57 @@ def computeGradient(psiHatP=None, inpaintedImage=None, filledImage=None):
         print 1
     selected_block, valid = copyutils.getWindow(inpaintedImage, center, w + 2)
     block_gray = cv.cvtColor(selected_block, cv.COLOR_BGR2GRAY)
-
+    
+    #OK, this time I try to use filled first
+    filled_patch, valid = copyutils.getWindow(filledImage, center, w + 2)
+    block_gray = filled_patch * 1.0 / 255 * block_gray
     
     block_scharrx = cv.Sobel(block_gray, cv.CV_64F, 1, 0, ksize=5)
     block_scharry = cv.Sobel(block_gray, cv.CV_64F, 0, 1, ksize=5)
     #For here, I added one outer range to ensure the accuracy for the outtest gradient.
     #cut it back to correct size
-    cut_x_patch_gray, _ = copyutils.getWindow(block_scharrx, (w + 2, w + 2), w)
-    cut_y_patch_gray, _ = copyutils.getWindow(block_scharry, (w + 2, w + 2), w)
+    cut_x_available, _ = copyutils.getWindow(block_scharrx, (w + 2, w + 2), w)
+    cut_y_available, _ = copyutils.getWindow(block_scharry, (w + 2, w + 2), w)
 
+    #cut!
+    #cut_x_patch_gray, valid = copyutils.getWindow(Image_scharrx, center, w)
+    #cut_y_patch_gray, valid = copyutils.getWindow(Image_scharry, center, w)
     #Filled?
     #filledImage = filledImage
-    # OK, this time I try to use filled first
-    filled_patch, valid = copyutils.getWindow(filledImage, center, w)
     #filled_patch, valid = copyutils.getWindow(filledImage, center, w)
-    cut_x_available = cut_x_patch_gray * filled_patch / 255
-    cut_y_available = cut_y_patch_gray * filled_patch / 255
+    #cut_x_available = cut_x_patch_gray * filled_patch / 255
+    #cut_y_available = cut_y_patch_gray * filled_patch / 255
 
     squared_sum = np.multiply(cut_x_available, cut_x_available) \
                   + np.multiply(cut_y_available, cut_y_available)
     idx = np.unravel_index(squared_sum.argmax(), squared_sum.shape)
-    Dx = cut_x_available[idx[0], idx[1]]
-    Dy = cut_y_available[idx[0], idx[1]]#TODO:Should I keep here? Or should I switch?
+    Dx = cut_y_available[idx[0], idx[1]]
+    Dy = cut_x_available[idx[0], idx[1]]#TODO:Should I keep here? Or should I switch?
     #########################################
-    
+    '''
+
+    # get coords and w
+    coords = (psiHatP.row(), psiHatP.col())
+    w = psiHatP.radius()
+
+    # get the patch in grascale with only filled pixels
+    imgGray = cv.cvtColor(inpaintedImage, cv.COLOR_BGR2GRAY)
+    validGray = imgGray * (filledImage / 255)
+    patchGray = copyutils.getWindow(validGray, coords, w)[0]
+
+    # compute gradients use sobel (since we use 3 by 3 kernel, thus set ksize=-1
+    # in order to use 3 by 3 scharr kernel)
+    gradientsX = cv.Sobel(patchGray, cv.CV_64F, 1, 0, ksize=-1)
+    gradientsY = cv.Sobel(patchGray, cv.CV_64F, 0, 1, ksize=-1)
+
+    # compute the magnitude for each pair of gradients for each pixel
+    magnitudes = np.add(gradientsX ** 2, gradientsY ** 2)
+
+    # find the maximum gradients and set the values to Dy and Dx
+    ind = np.unravel_index(np.argmax(magnitudes, axis=None), magnitudes.shape)
+    Dx = gradientsX[ind]
+    Dy = gradientsY[ind]
+    '''
     return Dy, Dx
     
 #########################################
@@ -199,7 +226,24 @@ def computeNormal(psiHatP=None, filledImage=None, fillFront=None):
     #########################################
     ## PLACE YOUR CODE BETWEEN THESE LINES ##
     #########################################
-    
+    '''
+    Nx, Ny = None, None
+    pcord = (psiHatP.row(), psiHatP.col())
+    w = psiHatP.radius()
+    imagei, imageb = copyutils.getWindow(filledImage, pcord, w)
+    sx = cv.Sobel(imagei, cv.CV_64F, 1, 0)
+    sy = cv.Sobel(imagei, cv.CV_64F, 0, 1)
+    x, y = sx[w, w], sy[w, w]
+    i = np.sqrt(x ** 2 + y ** 2)
+    if i != 0:
+        Nx = x / i
+        Ny = -y / i
+
+    #########################################
+
+
+    return Ny, Nx
+    '''
     # Replace these dummy values with your own code
     Ny = None
     Nx = None
@@ -233,8 +277,37 @@ def computeNormal(psiHatP=None, filledImage=None, fillFront=None):
     magnitude = np.sqrt(cut_x_patch[w, w] ** 2 + cut_y_patch[w, w] ** 2)
 
     if magnitude != 0:#TODO: if this order and posneg correct?
-        Nx = -cut_x_patch[w,w] / magnitude
-        Ny = cut_y_patch[w,w] / magnitude
+        Nx = cut_y_patch[w,w] / magnitude
+        Ny = -cut_x_patch[w,w] / magnitude
     return Ny, Nx
     
-    
+    '''
+
+    # get coords and w and patch in source image
+    coords = (psiHatP.row(), psiHatP.col())
+    w = psiHatP.radius()
+
+    # get masks in patch size
+    # patchFilled = copyutils.getWindow(filledImage, coords, w)[0] / float(255)
+    patchFront = copyutils.getWindow(fillFront, coords, w)[0]
+    # patchUnfilled = np.logical_not(patchFilled) / float(1)
+
+    # if the fill front consists of exactly one pixel, the fill front is degenerate
+    # and has no well-defined normal
+    if np.count_nonzero(patchFront) == 1:
+        Nx = None
+        Ny = None
+        return Ny, Nx
+
+    # compute gradients at patch center
+    centerGX = cv.Sobel(patchFront, cv.CV_64F, 1, 0, ksize=5)[w, w]
+    centerGY = cv.Sobel(patchFront, cv.CV_64F, 0, 1, ksize=5)[w, w]
+
+    # compute magnitude for tangent at patch center
+    magnitude = np.sqrt(np.add(centerGX ** 2, centerGY ** 2))
+
+    # set Ny and Nx
+    Nx = - centerGY
+    Ny = centerGX
+    return Ny, Nx
+    '''

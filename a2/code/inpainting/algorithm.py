@@ -206,6 +206,8 @@ success, errorMessage = exampleBasedInpainting(self)
         elif self._images['alpha'].dtype != np.uint8:
             msg = "Alpha image is not uint8"
             return success, msg
+
+        success=True
         #########################################
 
         #
