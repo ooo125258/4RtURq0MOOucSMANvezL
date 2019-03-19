@@ -76,6 +76,8 @@ def propagation_and_random_search(source_patches, target_patches,
                                   global_vars=None
                                   ):
     new_f = f.copy()
+    print("lets' print f!")
+    print(f[0, 0])
     #odd_iteration = False
     #############################################
     ###  PLACE YOUR CODE BETWEEN THESE LINES  ###
@@ -108,10 +110,12 @@ def propagation_and_random_search(source_patches, target_patches,
     j = 0
     for iteri in range(iNumRows):
         for iterj in range(iNumCols):
-            
+            #Order of the iteration
+            last_row_idx = iNumRows - 1
+            last_col_idx = iNumCols - 1
             if not odd_iteration:
-                i = iNumRows - iteri - 1
-                j = iNumCols - iterj - 1
+                i = last_row_idx - iteri
+                j = last_col_idx - iterj
             else:
                 i = iteri
                 j = iterj
@@ -119,20 +123,20 @@ def propagation_and_random_search(source_patches, target_patches,
             curr_pos = [i,j]
             source_patch = source_patches[i][j]
             
-            skip_propagation = (i == 0 and j == 0) or (i == iNumRows - 1 and  j == iNumCols - 1)
+            skip_propagation = (i == 0 and j == 0) or (i == last_row_idx and  j == last_col_idx)
             #skip_propagation = False
             # Do propagation:
             if not skip_propagation and propagation_enabled:
                 curr_fxy = best_D[i, j]
                 # The position of 3 source points(or 2 or 1)
-                source_pts = np.array([], dtype=int)
+                source_pts = np.array([])
                 if odd_iteration:
-                    # When odd, we propagate information up and left
+                    # When odd, we propagate information down and left
                     # coherent bot and right
                     source_pts = np.append(source_pts, getFromNPArray(i - 1, j, best_D))
                     source_pts = np.append(source_pts, getFromNPArray(i, j - 1, best_D))
                 else:
-                    # When even, we propagate information down and right
+                    # When even, we propagate information up and right
                     # coherent up and left
                     source_pts = np.append(source_pts, getFromNPArray(i + 1, j, best_D))
                     source_pts = np.append(source_pts, getFromNPArray(i, j + 1, best_D))
@@ -144,17 +148,15 @@ def propagation_and_random_search(source_patches, target_patches,
                 # As f(a) = b-a, b = f(a) + a
                 target_pts = f_pts + curr_pos
                 
-                dists = np.zeros((0))
-                #for target_pt_idx in target_pts:#TODO: Change to matrix form later.
-                
                 target_patch = target_patches[target_pts[..., 0], target_pts[..., 1]]
                 
                 # Compute D now between the source patch and the target patch
                 square_diff = np.square(source_patch - target_patch)
                 square_diff[np.isnan((square_diff))] = 65025  # 255^2
+                #Current shape for square_diff: 2 * target_patch_shape(2d)
                 dists = np.sum(np.sum(square_diff, axis=-1), axis=-1)#np.append(dists, np.sum(square_diff)) #TODO:Should I treat nan as zero? or max?
                 
-                # 2 * target_patch_shape(2d)
+                
                 dists = np.append(dists, curr_fxy)
                 min_dist_idx = np.argmin(dists)
                 
@@ -162,37 +164,26 @@ def propagation_and_random_search(source_patches, target_patches,
                 if min_dist_idx != (dists.shape[0] - 1):
                     best_D[i][j] = dists[min_dist_idx]
                     new_f[i][j] = f_pts[min_dist_idx]
-                    curr_fxy = dists[min_dist_idx]
             
             #Random Process!
             if random_enabled:
                 #print("i:{} j:{}".format(i,j))
                 curr_fxy = best_D[i, j]
                 # We examine patches for i = 0, 1, 2, ... until the current search radius wa i is below 1 pixel. 
-                uis = np.array([], dtype=int)#As this is used as INDEX!
+                uis = None#As this is used as INDEX!
                 R = np.random.uniform(-1,1,2 * i_max).reshape(-1,2)
                 #R = 2*(np.random.rand(2 * i_max) - 0.5)
                 R = R.reshape(-1, 2)
                 uis = new_f[i,j] + np.multiply(wais, R)
-                '''
-                while w * alphai >= 1:
-                    #Ri is a uniform random in [ 1, 1] * [ 1, 1]
-                    Ri = np.random.uniform(-1,1,2)
-                    #ui = v0 + w*alpha^i Ri
-                    alphai *= alpha
-                    ui = new_f[i,j] + w * alphai * Ri
-                    uis = np.append(uis, ui)
-                uis = uis.reshape(len(uis) / 2, 2)
-                '''
+                
                 target_pts = uis + curr_pos
                 # TODO: Is this correct? Should we keep them? or abandon them?
-                target_pts[:, 0] = np.clip(target_pts[:, 0], 0, iNumRows - 1)
-                target_pts[:, 1] = np.clip(target_pts[:, 1], 0, iNumCols - 1)
+                target_pts[:, 0] = np.clip(target_pts[:, 0], 0, last_row_idx)
+                target_pts[:, 1] = np.clip(target_pts[:, 1], 0, last_row_idx)
                 target_pts = target_pts.astype(int)
                 
 
                 #similar with propogate:
-                dists = np.zeros((0))
                 #for target_pt_idx in target_pts:
                 target_patch = target_patches[target_pts[..., 0], target_pts[..., 1]]
 

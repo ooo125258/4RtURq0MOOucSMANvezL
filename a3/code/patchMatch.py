@@ -147,7 +147,8 @@ class PatchMatch:
         cv.imwrite(filename, loader)
         if os.path.exists(filename):
             success = True
-            msg = "Img" + filename + ' at key ' + key + " written!"
+            msg = "Img " + filename + ' at key ' + key + " written!"
+            print("Img " + filename + ' at key ' + key + " written!")
         else:
             msg = 'Error: File ' + filename + ' at key ' + key + ' writing Failed!'
         #########################################
