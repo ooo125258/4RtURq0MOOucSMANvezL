@@ -78,70 +78,83 @@ def propagation_and_random_search(source_patches, target_patches,
     new_f = f.copy()
     print("lets' print f!")
     print(f[0, 0])
-    
+    #odd_iteration = False
     #############################################
     ###  PLACE YOUR CODE BETWEEN THESE LINES  ###
     #############################################
     iNumRows, iNumCols = source_patches.shape[0:2]
     if best_D is None:
         # Create best_D, if it is None.
-        #best_D = np.zeros(iNumRows, iNumCols, 2)
-        #Coord for each point
-        col_coord_tmp = np.arange(0, iNumCols, 1)
-        col_coord = np.repeat(col_coord_tmp, iNumRows)
-        col_coord = col_coord.reshape(iNumCols, iNumRows).T
-        row_coord_tmp = np.arange(0, iNumRows, 1)
-        row_coord = np.repeat(row_coord_tmp, iNumCols)
-        row_coord = row_coord.reshape(iNumRows, iNumCols)
-        coord = np.stack((row_coord, col_coord), axis=2)
+        coord = make_coordinates_matrix([iNumRows, iNumCols])
         
         target_idxs = new_f + coord
         #TODO: check indexes here.
         target_patches_reordered = target_patches[target_idxs[...,0], target_idxs[...,1]]
         square_diff = np.square(source_patches - target_patches_reordered)
-        square_diff[np.isnan(square_diff)] = 65535
+        square_diff[np.isnan(square_diff)] = 65025
         #Best d is still 2 dimension, so I cannot add them together.
         best_D = np.sum(np.sum(square_diff, axis=3), axis=2)
     
+    #alphai matrix, used for random process:
+    wais = np.array([])
+    i_max = 0
+    if random_enabled:
+        #as w * alpha^i >= 1, record u, then i <= -logw/logalpha, record u
+        i_max = int(np.ceil(- np.log(w) / np.log(alpha)))
+        alphai_s = np.logspace(0, i_max, num=i_max, base=alpha, endpoint=False)
+        wais = w * alphai_s
+        wais = np.repeat(wais, 2).reshape(-1, 2)
+    
     # Loop through whole patches
-    for i in range(iNumRows):
-        for j in range(iNumCols):
-            if (i == 0 and j == 0) or (i == iNumRows - 1 or j == iNumCols - 1):  # TODO: accelerate?
-                continue
+    i = 0
+    j = 0
+    for iteri in range(iNumRows):
+        for iterj in range(iNumCols):
+            
+            if not odd_iteration:
+                i = iNumRows - iteri - 1
+                j = iNumCols - iterj - 1
+            else:
+                i = iteri
+                j = iterj
+            
             curr_pos = [i,j]
             source_patch = source_patches[i][j]
             
+            #skip_propagation = (i == 0 and j == 0) or (i == iNumRows - 1 and  j == iNumCols - 1)
+            skip_propagation = False
             # Do propagation:
-            if propagation_enabled:
+            if not skip_propagation and propagation_enabled:
                 curr_fxy = best_D[i, j]
                 # The position of 3 source points(or 2 or 1)
                 source_pts = np.array([], dtype=int)
                 if odd_iteration:
                     # When odd, we propagate information down and left
                     # coherent bot and right
-                    source_pts = np.append(source_pts, getFromNPArray(i + 1, j, best_D))
-                    source_pts = np.append(source_pts, getFromNPArray(i, j + 1, best_D))
+                    source_pts = np.append(source_pts, getFromNPArray(i - 1, j, best_D))
+                    source_pts = np.append(source_pts, getFromNPArray(i, j - 1, best_D))
                 else:
                     # When even, we propagate information up and right
                     # coherent up and left
-                    source_pts.append(getFromNPArray(i - 1, j, best_D))
-                    source_pts.append(getFromNPArray(i, j - 1, best_D))
-                source_pts = source_pts.reshape(source_pts.size / 2, 2)
+                    source_pts = np.append(source_pts, getFromNPArray(i + 1, j, best_D))
+                    source_pts = np.append(source_pts, getFromNPArray(i, j + 1, best_D))
+                source_pts = source_pts.reshape(source_pts.size / 2, 2).astype(int)
                 
-                f_pts = f[source_pts[:, 0], source_pts[:, 1]]
+                f_pts = new_f[source_pts[:, 0], source_pts[:, 1]]
                 # f_pts is 2 * 2 ... might be 1*2
                 
                 # As f(a) = b-a, b = f(a) + a
                 target_pts = f_pts + curr_pos
                 
                 dists = np.zeros((0))
-                for target_pt_idx in target_pts:
-                    target_patch = target_patches[target_pt_idx[0], target_pt_idx[1]]
-                    
-                    # Compute D now between the source patch and the target patch
-                    square_diff = np.square(source_patch - target_patch)
-                    square_diff[np.isnan((square_diff))] = 65535  # 255^2
-                    dists = np.append(dists, np.sum(square_diff)) #TODO:Should I treat nan as zero? or max?
+                #for target_pt_idx in target_pts:#TODO: Change to matrix form later.
+                
+                target_patch = target_patches[target_pts[..., 0], target_pts[..., 1]]
+                
+                # Compute D now between the source patch and the target patch
+                square_diff = np.square(source_patch - target_patch)
+                square_diff[np.isnan((square_diff))] = 65025  # 255^2
+                dists = np.sum(np.sum(square_diff, axis=-1), axis=-1)#np.append(dists, np.sum(square_diff)) #TODO:Should I treat nan as zero? or max?
                 
                 # 2 * target_patch_shape(2d)
                 dists = np.append(dists, curr_fxy)
@@ -151,9 +164,60 @@ def propagation_and_random_search(source_patches, target_patches,
                 if min_dist_idx != (dists.shape[0] - 1):
                     best_D[i][j] = dists[min_dist_idx]
                     new_f[i][j] = f_pts[min_dist_idx]
-    
+                    curr_fxy = dists[min_dist_idx]
+            
+            #Random Process!
+            if random_enabled:
+                if i == 0 and j == 0:
+                    print(1)
+                #print("i:{} j:{}".format(i,j))
+                curr_fxy = best_D[i, j]
+                # We examine patches for i = 0, 1, 2, ... until the current search radius wa i is below 1 pixel. 
+                alphai = alpha
+                uis = np.array([], dtype=int)#As this is used as INDEX!
+                #R = np.random.uniform(-1,1,2 * i_max).reshape(-1,2)
+                R = 2*(np.random.rand(2 * i_max) - 0.5)
+                R = R.reshape(-1, 2)
+                uis = new_f[i,j] + np.multiply(wais, R)
+                '''
+                while w * alphai >= 1:
+                    #Ri is a uniform random in [ 1, 1] * [ 1, 1]
+                    Ri = np.random.uniform(-1,1,2)
+                    #ui = v0 + w*alpha^i Ri
+                    alphai *= alpha
+                    ui = new_f[i,j] + w * alphai * Ri
+                    uis = np.append(uis, ui)
+                uis = uis.reshape(len(uis) / 2, 2)
+                '''
+                target_pts = uis + curr_pos
+                # TODO: Is this correct? Should we keep them? or abandon them?
+                target_pts[:, 0] = np.clip(target_pts[:, 0], 0, iNumRows - 1)
+                target_pts[:, 1] = np.clip(target_pts[:, 1], 0, iNumCols - 1)
+                target_pts = target_pts.astype(int)
+                
+
+                #similar with propogate:
+                dists = np.zeros((0))
+                #for target_pt_idx in target_pts:
+                target_patch = target_patches[target_pts[..., 0], target_pts[..., 1]]
+
+                # Compute D now between the source patch and the target patch
+                square_diff = np.square(source_patch - target_patch)
+                square_diff[np.isnan((square_diff))] = 65025  # 255^2
+                dists = np.sum(np.sum(square_diff, axis=-1), axis=-1)
+                # 2 * target_patch_shape(2d)
+                dists = np.append(dists, curr_fxy)
+                min_dist_idx = np.argmin(dists)
+                
+                if min_dist_idx != len(dists) - 1:
+                    target_pt = target_pts[min_dist_idx] #This is b
+                    #f(a) = b - a
+                    new_f[i][j] = target_pt - curr_pos #
+                    best_D[i][j] = dists[min_dist_idx]
     #############################################
-    
+                
+                
+                
     return new_f, best_D, global_vars
 
 
@@ -194,10 +258,16 @@ def reconstruct_source_from_target(target, f):
     ###  PLACE YOUR CODE BETWEEN THESE LINES  ###
     #############################################
     
-    #############################################
+    iNumRows, iNumCols = target.shape[0:2]
+    coord = make_coordinates_matrix([iNumRows, iNumCols])
+    
+    #(x, y) + f(x, y)
+    target_idxs = coord + f
+    # TODO: check indexes here.
+    rec_source = target[target_idxs[:,:, 0], target_idxs[:,:, 1]]
     
     return rec_source
-
+    
 
 # This function takes an NxM image with C color channels and a patch size P
 # and returns a matrix of size NxMxCxP^2 that contains, for each pixel [i,j] in
