@@ -28,6 +28,7 @@ from algorithm import *
 import cv2 as cv
 import numpy as np
 import time
+import os
 
 
 # A decorator function for elapsed-time profiling
@@ -129,7 +130,17 @@ class PatchMatch:
 
         # COPY INTO THIS SPACE YOUR IMPLEMENTATION OF THIS FUNCTION
         # FROM YOUR algorithm.py of A1-Part A
-
+        loader = cv.imread(filename)
+        if loader is None:
+            msg = 'Error: File ' + filename + ' at key ' + key + ' reading Failed!'
+        else:
+            loader = loader.astype(np.uint8)  # It must be uint8
+            # loader = cv.cvtColor(loader, cv.COLOR_BGR2RGB).astype(np.float) / 255
+            # loader = cv.normalize(loader, loader, alpha=0, beta=1, norm_type=cv.NORM_MINMAX,dtype=cv.CV_32F)
+            # loader = cv.normalize(loader, None, 1, 0, cv.NORM_MINMAX)
+            self._images[key] = loader
+            success = True
+            msg = "Img" + filename + ' at key ' + key + " loaded."
 
         #########################################
         return success, msg
@@ -147,7 +158,19 @@ class PatchMatch:
         #########################################
         ## PLACE YOUR CODE BETWEEN THESE LINES ##
         #########################################
-
+        loader = self._images[key]
+        if len(self._images[key].shape) >= 3:
+            loader = loader.astype(np.uint8)
+            # loader = cv.cvtColor(loader, cv.COLOR_RGB2BGR)
+        else:
+            loader = loader.astype(np.uint8)
+        cv.imwrite(filename, loader)
+        if os.path.exists(filename):
+            success = True
+            msg = "Img " + filename + ' at key ' + key + " written!"
+            print("Img " + filename + ' at key ' + key + " written!")
+        else:
+            msg = 'Error: File ' + filename + ' at key ' + key + ' writing Failed!'
 
         #########################################
         return success, msg

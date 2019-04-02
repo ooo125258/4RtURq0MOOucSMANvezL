@@ -14,11 +14,11 @@
 # import basic packages
 import numpy as np
 # import the heapq package
-from heapq import heappush, heappushpop, nlargest
+from heapq import heappush, heappushpop, nlargest, nsmallest
 # see below for a brief comment on the use of tiebreakers in python heaps
 from itertools import count
 _tiebreaker = count()
-
+import os
 from copy import deepcopy as copy
 
 # basic numpy configuration
@@ -28,7 +28,13 @@ np.random.seed(seed=131)
 # ignore division by zero warning
 np.seterr(divide='ignore', invalid='ignore')
 
-
+def getFromNPArray(i, j, x):
+    # Get [i,j] if existed.
+    # Return [] if out of bound by 1
+    if i == -1 or j == -1 or i == x.shape[0] or j == x.shape[1]:
+        return []
+    else:
+        return [i, j]
 # This function implements the basic loop of the Generalized PatchMatch
 # algorithm, as explained in Section 3.2 of the PatchMatch paper and Section 3
 # of the Generalized PatchMatch paper.
@@ -88,17 +94,191 @@ def propagation_and_random_search_k(source_patches, target_patches,
                                     odd_iteration,
                                     global_vars
                                     ):
-
+    print("start propagation_and_random_search_k")
+    new_f, best_D = NNF_heap_to_NNF_matrix(f_heap)
     #################################################
     ###  PLACE YOUR A3 CODE BETWEEN THESE LINES   ###
     ###  THEN START MODIFYING IT AFTER YOU'VE     ###
     ###  IMPLEMENTED THE 2 HELPER FUNCTIONS BELOW ###
     #################################################
+    iNumRows, iNumCols = source_patches.shape[0:2]
 
+    # alphai matrix, used for random process:
+    wais = np.array([])
+    i_max = 0
+    if random_enabled:
+        # as w * alpha^i >= 1, record u, then i <= -logw/logalpha, record u
+        i_max = int(np.ceil(- np.log(w) / np.log(alpha)))
+        alphai_s = np.logspace(0, i_max, num=i_max, base=alpha, endpoint=False)
+        wais = w * alphai_s
+        wais = np.repeat(wais, 2).reshape(-1, 2)
 
-    #############################################
+    # Loop through whole patches
+    i = 0
+    j = 0
+    K = len(f_heap[0][0])
+    for iteri in range(iNumRows):
+        print(iteri)
+        for iterj in range(iNumCols):
+        
+            if not odd_iteration:
+                i = iNumRows - iteri - 1
+                j = iNumCols - iterj - 1
+            else:
+                i = iteri
+                j = iterj
+        
+            curr_pos = [i, j]
+            source_patch = source_patches[i][j]
+        
+            skip_propagation = (i == 0 and j == 0) or (i == iNumRows - 1 and j == iNumCols - 1)
+            # skip_propagation = False
+            # Do propagation:
+            
+            if not skip_propagation and propagation_enabled:
+                
+                #curr_fxy = best_D[k][i, j]
+                # The position of 3 source points(or 2 or 1)
+                source_pts = np.array([], dtype=int)
+                if odd_iteration:
+                    # When odd, we propagate information up and left
+                    # coherent bot and right
+                    source_pts = np.append(source_pts, getFromNPArray(i - 1, j, new_f[0]))
+                    source_pts = np.append(source_pts, getFromNPArray(i, j - 1, new_f[0]))
+                else:
+                    # When even, we propagate information down and right
+                    # coherent up and left
+                    source_pts = np.append(source_pts, getFromNPArray(i + 1, j, new_f[0]))
+                    source_pts = np.append(source_pts, getFromNPArray(i, j + 1, new_f[0]))
+                source_pts = source_pts.reshape(source_pts.size / 2, 2).astype(int)
+        
+                f_pts = new_f[:,source_pts[:, 0], source_pts[:, 1]] #TODO: it must be k shape
+                # f_pts is 2 * 2 ... might be 1*2
+        
+                # As f(a) = b-a, b = f(a) + a
+                target_pts = f_pts + curr_pos
+
+                #Check if targets in bound, implement later
+                # TODO: Is this correct? Should we keep them? or abandon them?
+                target_pts[..., 0] = np.clip(target_pts[..., 0], 0, iNumRows - 1)
+                target_pts[..., 1] = np.clip(target_pts[..., 1], 0, iNumCols - 1)
+                target_pts = target_pts.astype(int)
+
+                
+                dists = np.zeros((0))
+            
+                target_patch = target_patches[target_pts[..., 0], target_pts[..., 1]]
+            
+                # Compute D now between the source patch and the target patch
+                square_diff = np.square(source_patch - target_patch)
+                #Reweighted by nan number
+                #nan_pos = np.isnan(square_diff)
+                #nan_count = np.sum(np.sum(nan_pos, -1), -1)
+                #count_for_each_patch = square_diff.shape[-1] * square_diff.shape[-2]
+                #ratio = nan_count * 1.0 / count_for_each_patch
+                
+                square_diff[np.isnan((square_diff))] = 65025  # 255^2
+                #TODO: weight by existed pixel
+                dists = np.sum(np.nansum(square_diff, axis=-1),
+                               axis=-1) #/ ratio  #TODO: zero or max or avg?
+                actual_offset = target_pts - curr_pos
+                for k in range(k):
+                    for tar_idx in range(target_pts.shape[1]):# TODO: confirm all tar_idx items have the same shape!
+                        #tupled_src_coord = tuple(f_pts[k][tar_idx])
+                        tupled_src_coord = tuple(actual_offset[k][tar_idx])
+                        if tupled_src_coord in f_coord_dictionary[i][j]:
+                            continue
+                        #if -nlargest(1, f_heap[i][j])[0][0] < dists[tar_idx]: #if truly the new result is smaller
+                        tup = (-dists[k][tar_idx], _tiebreaker.next(), tupled_src_coord) #It's actually with number of target pts
+                        
+                        #if tup[0] == f_heap[i][j][0][0]:
+                        #    continue
+                        #popped = heappushpop(f_heap[i][j], tup)
+                        if tup == heappushpop(f_heap[i][j], tup):
+                            continue
+                            
+                        #else:
+                        #heappushpop(f_heap[i][j], tup)#heappushpop?
+                        f_coord_dictionary[i][j][tupled_src_coord] = dists[k][tar_idx]
+                        best_D[k][i][j] = dists[k][tar_idx]
+                        new_f[k][i][j] = tupled_src_coord#f_pts[k][tar_idx]
+                        #curr_fxy = dists[tar_idx]
+                            
+                    # 2 * target_patch_shape(2d)
+                    #dists = np.append(dists, curr_fxy)
+                    #min_dist_idx = np.argmin(dists)
+            
+                    # If min_dist_idx doesn't point the the original one, then move best_D
+                    #if min_dist_idx != (dists.shape[0] - 1):
+                        
+
+            # Random Process!
+            if random_enabled:
+                
+                # print("i:{} j:{}".format(i,j))
+                #curr_fxy = best_D[:][i, j]
+                # We examine patches for i = 0, 1, 2, ... until the current search radius wa i is below 1 pixel.
+                uis = np.array([], dtype=int)  # As this is used as INDEX!
+                R = np.random.uniform(-1, 1, (K, i_max, 2))
+                # R = 2*(np.random.rand(2 * i_max) - 0.5)
+                #R = R.reshape(-1, 2)
+                wr = np.multiply(wais, R) #4 * 10 * 2
+                uis_unshaped = new_f[:,i, j,:] + np.moveaxis(wr, 1, 0) #TODO: check dim
+                uis = np.moveaxis(uis_unshaped, 0, 1).astype(int)
+                
+                target_pts = uis + curr_pos
+                # TODO: Is this correct? Should we keep them? or abandon them?
+                target_pts[..., 0] = np.clip(target_pts[..., 0], 0, iNumRows - 1)
+                target_pts[..., 1] = np.clip(target_pts[..., 1], 0, iNumCols - 1)
+                target_pts = target_pts.astype(int)
+            
+                # similar with propogate:
+                dists = np.zeros((0))
+                # for target_pt_idx in target_pts:
+                target_patch = target_patches[target_pts[..., 0], target_pts[..., 1]]
+            
+                # Compute D now between the source patch and the target patch
+                square_diff = np.square(source_patch - target_patch)
+                # Reweighted by nan number
+                #nan_pos = np.isnan(square_diff)
+                #nan_count = np.sum(np.sum(nan_pos, -1), -1)
+                #count_for_each_patch = square_diff.shape[-1] * square_diff.shape[-2]
+                #ratio = nan_count * 1.0 / count_for_each_patch
+
+                square_diff[np.isnan((square_diff))] = 65025  # 255^2
+                # TODO: weight by existed pixel
+                dists = np.sum(np.nansum(square_diff, axis=-1),
+                               axis=-1)# / (1 - ratio)
+                actual_offset = target_pts - curr_pos
+                for k in range(K):
+                    for tar_idx in range(target_pts.shape[1]):# TODO: confirm all tar_idx items have the same shape!
+                        # TODO: for here, I just put if it's not exists. Should I also replace with the smallest one?
+                        #tupled_src_coord = tuple(uis[k][tar_idx]) # TODO: it should represent the offset. Should I use the clipped offset? or the origin offset?
+                        tupled_src_coord = tuple(actual_offset[k][tar_idx])
+                        if tupled_src_coord in f_coord_dictionary[i][j]: #TODO: check if it's this in f_coord
+                            continue
+                        #else:
+                        tup = (-dists[k][tar_idx], _tiebreaker.next(),
+                               tupled_src_coord)  # It's actually with number of target pts
+                        #if tup[0] == f_heap[i][j][0][0]:#: #if truly the new result is smaller
+                        #    continue
+                        #popped = heappushpop(f_heap[i][j], tup)
+                        if tup == heappushpop(f_heap[i][j], tup):
+                            continue
+                        f_coord_dictionary[i][j][tupled_src_coord] = dists[k][tar_idx]
+                        best_D[k][i][j] = dists[k][tar_idx]
+                        new_f[k][i][j] = tupled_src_coord#target_pts[k][tar_idx] - curr_pos#uis[tar_idx]
+                        #curr_fxy = dists[k][tar_idx]
+
+                # 2 * target_patch_shape(2d)
+                #dists = np.append(dists, curr_fxy)
+                #min_dist_idx = np.argmin(dists)
+            
+                #if min_dist_idx != len(dists) - 1:
+            #############################################
 
     return global_vars
+
 
 
 # This function builds a 2D heap data structure to represent the k nearest-neighbour
@@ -145,8 +325,51 @@ def NNF_matrix_to_NNF_heap(source_patches, target_patches, f_k):
     #############################################
     ###  PLACE YOUR CODE BETWEEN THESE LINES  ###
     #############################################
+    #holds k NNFs
+    k = f_k.shape[0]
+    f_coord_dictionary = []
+    f_heap = []
+    #2d array of dicts...
+    
+    for i in range(source_patches.shape[0]):
+        f_heap.append([])
+        f_coord_dictionary.append([])
+        for j in range(source_patches.shape[1]):
+            dict = {}
+            f_heap[i].append([])
+            f_coord_dictionary[i].append({})
+            target_pts = f_k[:,i,j,:]
+            source_patch = source_patches[i][j]
+            target_patch = target_patches[target_pts[..., 0], target_pts[..., 1]]
 
+            # Compute D now between the source patch and the target patch
+            #square_diff = np.square(source_patch - target_patch)
+            # Reweighted by nan number
+            #nan_pos = np.isnan(square_diff)
+            #nan_count = np.sum(np.sum(nan_pos, -1), -1)
+            #count_for_each_patch = square_diff.shape[-1] * square_diff.shape[-2]
+            #ratio = nan_count * 1.0 / count_for_each_patch
 
+            # square_diff[np.isnan((square_diff))] = 65025  # 255^2
+            # TODO: weight by existed pixel
+            #dists = np.sum(np.nansum(square_diff, axis=-1),
+            #               axis=-1) / (1 - ratio)
+            square_diff = np.square(source_patch - target_patch)
+            square_diff[np.isnan((square_diff))] = 65025  # 255^2
+            dists = np.sum(np.sum(square_diff, axis=-1),
+                           axis=-1)  # np.append(dists, np.sum(square_diff)) # Notice: negative here!
+
+            for each_idx in range(k):
+                # (priority, counter, displacement)
+                displacement = f_k[each_idx][i][j]
+                #Push to Heap!
+
+                priority = -dists[each_idx]
+                counter = _tiebreaker.next()
+                heappush(f_heap[i][j], (priority, counter, displacement))
+                f_coord_dictionary[i][j][tuple(displacement)] = dists[each_idx]
+
+            
     #############################################
 
     return f_heap, f_coord_dictionary
@@ -168,14 +391,24 @@ def NNF_matrix_to_NNF_heap(source_patches, target_patches, f_k):
 #
 
 def NNF_heap_to_NNF_matrix(f_heap):
-
+    #Impossible to make it vectorized
     #############################################
     ###  PLACE YOUR CODE BETWEEN THESE LINES  ###
     #############################################
+    k = len(f_heap[0][0])
+    f_k = np.zeros((len(f_heap[0][0]),len(f_heap), len(f_heap[0]),  2), dtype=int)
+    D_k = np.zeros((len(f_heap[0][0]), len(f_heap), len(f_heap[0])))
 
+    for i in range(len(f_heap)):
+        for j in range(len(f_heap[0])):
+            largest = nlargest(k, f_heap[i][j])
+            for k_idx in range(k):
+                f_k[k_idx,i,j,:] = largest[k_idx][2][:]
+                D_k[k_idx,i,j] = -largest[k_idx][0]
 
+    f_k = f_k.astype(int)
     #############################################
-
+    
     return f_k, D_k
 
 
@@ -188,7 +421,13 @@ def nlm(target, f_heap, h):
     #############################################
     ###  PLACE YOUR CODE BETWEEN THESE LINES  ###
     #############################################
-
+    f_k, D_k = NNF_heap_to_NNF_matrix(f_heap)
+    e_item = np.exp(- np.sqrt(D_k) / h ** 2) #Assume D is a distance square here, or square root
+    z_item = np.sum(e_item, axis=0) #sigma j
+    w_item = np.multiply(e_item, np.reciprocal(z_item)) #TODO: check the dimension
+    denoised_k = np.einsum("ijc,kij->kijc", target, w_item)
+    #denoised_k = np.multiply(target, w_item)
+    denoised = np.sum(denoised_k, axis=0)
 
     #############################################
 
@@ -201,6 +440,7 @@ def nlm(target, f_heap, h):
 ###  PLACE ADDITIONAL HELPER ROUTINES, IF ###
 ###  ANY, BETWEEN THESE LINES             ###
 #############################################
+
 
 
 #############################################
@@ -230,11 +470,17 @@ def nlm(target, f_heap, h):
 
 def reconstruct_source_from_target(target, f):
     rec_source = None
-
+    print "shape target: " + str(target.shape)
     ################################################
     ###  PLACE YOUR A3 CODE BETWEEN THESE LINES  ###
     ################################################
+    iNumRows, iNumCols = target.shape[0:2]
+    coord = make_coordinates_matrix([iNumRows, iNumCols])
 
+    # (x, y) + f(x, y)
+    target_idxs = coord + f
+    # TODO: check indexes here.
+    rec_source = target[target_idxs[:, :, 0], target_idxs[:, :, 1]]
 
     #############################################
 
