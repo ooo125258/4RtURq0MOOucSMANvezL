@@ -157,7 +157,7 @@ if their_main:
                                         f[k, i, j] = cur_disp
                                         D[k, i, j] = cur_min
                 # start ramdom
-                if random_enabled and False:
+                if random_enabled:
                     max_iters = 1 + np.int(-np.log(w) / np.log(alpha))
                     for k in range(k_size):
                         rand = np.random.uniform(-1, 1, (2, max_iters))
@@ -245,11 +245,11 @@ if not their_main:
                 curr_pos = [i, j]
                 source_patch = source_patches[i][j]
             
-                skip_propagation = (i == 0 and j == 0) or (i == iNumRows - 1 and j == iNumCols - 1)
+                #skip_propagation = (i == 0 and j == 0) or (i == iNumRows - 1 and j == iNumCols - 1)
                 # skip_propagation = False
                 # Do propagation:
                 
-                if not skip_propagation and propagation_enabled:
+                if propagation_enabled:
                     
                     #curr_fxy = best_D[k][i, j]
                     # The position of 3 source points(or 2 or 1)
@@ -257,13 +257,17 @@ if not their_main:
                     if odd_iteration:
                         # When odd, we propagate information up and left
                         # coherent bot and right
-                        source_pts = np.append(source_pts, getFromNPArray(i - 1, j, new_f[0]))
-                        source_pts = np.append(source_pts, getFromNPArray(i, j - 1, new_f[0]))
+                        if i != 0:
+                            source_pts = np.append(source_pts, [i - 1, j])
+                        if j != 0:
+                            source_pts = np.append(source_pts, [i, j - 1])
                     else:
                         # When even, we propagate information down and right
                         # coherent up and left
-                        source_pts = np.append(source_pts, getFromNPArray(i + 1, j, new_f[0]))
-                        source_pts = np.append(source_pts, getFromNPArray(i, j + 1, new_f[0]))
+                        if i != iNumRows - 1:
+                            source_pts = np.append(source_pts, [i + 1, j])
+                        if j != iNumCols - 1:
+                            source_pts = np.append(source_pts, [i, j + 1])
                     source_pts = source_pts.reshape(-1, 2).astype(int)
             
                     f_pts = new_f[:,source_pts[:, 0], source_pts[:, 1]] #TODO: it must be k shape
@@ -302,7 +306,6 @@ if not their_main:
                             tupled_src_coord = tuple(actual_offset[k][tar_idx])
                             if tupled_src_coord in f_coord_dictionary[i][j]:
                                 continue
-                            #if -nlargest(1, f_heap[i][j])[0][0] < dists[tar_idx]: #if truly the new result is smaller
                             tup = (-dists[k][tar_idx], _tiebreaker.next(), tupled_src_coord) #It's actually with number of target pts
                             
                             if dists[k][tar_idx] >= -f_heap[i][j][0][0]:
@@ -330,7 +333,7 @@ if not their_main:
                             
 
                 # Random Process!
-                if random_enabled and False:
+                if random_enabled:
                     
                     # print("i:{} j:{}".format(i,j))
                     #curr_fxy = best_D[:][i, j]
@@ -382,6 +385,7 @@ if not their_main:
                             #popped = heappushpop(f_heap[i][j], tup)
                             #if tup == heappushpop(f_heap[i][j], tup):
                             #    continue
+                            
                             heappushpop(f_heap[i][j], tup)
                             f_coord_dictionary[i][j][tupled_src_coord] = dists[k][tar_idx]
                     largest = nlargest(K, f_heap[i][j])
@@ -547,11 +551,13 @@ if not their_nlm:
         coord = make_coordinates_matrix(target.shape)
         f_k, D_k = NNF_heap_to_NNF_matrix(f_heap)
         target_idxs = coord + f_k
-        target_patches = target[target_idxs[..., 0], target_idxs[..., 1]]
+
+
+        target_patches_reordered = target[target_idxs[..., 0], target_idxs[..., 1]]
         e_item = np.exp(- np.sqrt(D_k) / h ** 2) #Assume D is a distance square here, or square root
         z_item = np.sum(e_item, axis=0) #sigma j
         w_item = np.multiply(e_item, np.reciprocal(z_item)) #TODO: check the dimension
-        target_patches_reordered = np.moveaxis(target_patches, -1, 0)#3,k,i,j
+        target_patches_reordered = np.moveaxis(target_patches_reordered, -1, 0)#3,k,i,j
         denoised_k_reordered = np.multiply(target_patches_reordered, w_item)
         denoised_k = np.moveaxis(denoised_k_reordered, 0, -1)#k,i,j,3
         #denoised_k = np.multiply(target, w_item)
