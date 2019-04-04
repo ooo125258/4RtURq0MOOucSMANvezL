@@ -14,7 +14,7 @@
 # import basic packages
 import numpy as np
 # import the heapq package
-from heapq import heappush, heappushpop, nlargest, nsmallest
+from heapq import heappush, heappushpop, nlargest
 # see below for a brief comment on the use of tiebreakers in python heaps
 from itertools import count
 _tiebreaker = count()
@@ -85,7 +85,6 @@ def getFromNPArray(i, j, x):
 #     NOTE: the variables f_heap and f_coord_dictionary are modified in situ so they are not
 #           explicitly returned as arguments to the function
 
-
 def propagation_and_random_search_k(source_patches, target_patches,
                                     f_heap,
                                     f_coord_dictionary,
@@ -118,7 +117,6 @@ def propagation_and_random_search_k(source_patches, target_patches,
     j = 0
     K = len(f_heap[0][0])
     for iteri in range(iNumRows):
-        print(iteri)
         for iterj in range(iNumCols):
         
             if not odd_iteration:
@@ -131,26 +129,28 @@ def propagation_and_random_search_k(source_patches, target_patches,
             curr_pos = [i, j]
             source_patch = source_patches[i][j]
         
-            skip_propagation = (i == 0 and j == 0) or (i == iNumRows - 1 and j == iNumCols - 1)
-            # skip_propagation = False
             # Do propagation:
             
-            if not skip_propagation and propagation_enabled:
+            if propagation_enabled:
                 
-                #curr_fxy = best_D[k][i, j]
                 # The position of 3 source points(or 2 or 1)
                 source_pts = np.array([], dtype=int)
                 if odd_iteration:
                     # When odd, we propagate information up and left
                     # coherent bot and right
-                    source_pts = np.append(source_pts, getFromNPArray(i - 1, j, new_f[0]))
-                    source_pts = np.append(source_pts, getFromNPArray(i, j - 1, new_f[0]))
+                    # Notice: It may be wrong, if I use previous code here. I don't know why, but it works!
+                    if i != 0:
+                        source_pts = np.append(source_pts, [i - 1, j])
+                    if j != 0:
+                        source_pts = np.append(source_pts, [i, j - 1])
                 else:
                     # When even, we propagate information down and right
                     # coherent up and left
-                    source_pts = np.append(source_pts, getFromNPArray(i + 1, j, new_f[0]))
-                    source_pts = np.append(source_pts, getFromNPArray(i, j + 1, new_f[0]))
-                source_pts = source_pts.reshape(source_pts.size / 2, 2).astype(int)
+                    if i != iNumRows - 1:
+                        source_pts = np.append(source_pts, [i + 1, j])
+                    if j != iNumCols - 1:
+                        source_pts = np.append(source_pts, [i, j + 1])
+                source_pts = source_pts.reshape(-1, 2).astype(int)
         
                 f_pts = new_f[:,source_pts[:, 0], source_pts[:, 1]] #TODO: it must be k shape
                 # f_pts is 2 * 2 ... might be 1*2
@@ -182,41 +182,32 @@ def propagation_and_random_search_k(source_patches, target_patches,
                 dists = np.sum(np.nansum(square_diff, axis=-1),
                                axis=-1) #/ ratio  #TODO: zero or max or avg?
                 actual_offset = target_pts - curr_pos
-                for k in range(k):
+                for k in range(K):
                     for tar_idx in range(target_pts.shape[1]):# TODO: confirm all tar_idx items have the same shape!
                         #tupled_src_coord = tuple(f_pts[k][tar_idx])
                         tupled_src_coord = tuple(actual_offset[k][tar_idx])
                         if tupled_src_coord in f_coord_dictionary[i][j]:
                             continue
-                        #if -nlargest(1, f_heap[i][j])[0][0] < dists[tar_idx]: #if truly the new result is smaller
                         tup = (-dists[k][tar_idx], _tiebreaker.next(), tupled_src_coord) #It's actually with number of target pts
                         
-                        #if tup[0] == f_heap[i][j][0][0]:
-                        #    continue
-                        #popped = heappushpop(f_heap[i][j], tup)
-                        if tup == heappushpop(f_heap[i][j], tup):
+                        if dists[k][tar_idx] >= -f_heap[i][j][0][0]:
                             continue
                             
                         #else:
-                        #heappushpop(f_heap[i][j], tup)#heappushpop?
+                        heappushpop(f_heap[i][j], tup)#heappushpop?
                         f_coord_dictionary[i][j][tupled_src_coord] = dists[k][tar_idx]
-                        best_D[k][i][j] = dists[k][tar_idx]
-                        new_f[k][i][j] = tupled_src_coord#f_pts[k][tar_idx]
-                        #curr_fxy = dists[tar_idx]
-                            
-                    # 2 * target_patch_shape(2d)
-                    #dists = np.append(dists, curr_fxy)
-                    #min_dist_idx = np.argmin(dists)
-            
-                    # If min_dist_idx doesn't point the the original one, then move best_D
-                    #if min_dist_idx != (dists.shape[0] - 1):
+                #I saved all information in f_heap, now I should use it to keep
+                largest = nlargest(K, f_heap[i][j])
+                for k in range(K):
+                    best_D[k][i][j] = -largest[k][0]
+                    new_f[k][i][j] = largest[k][2]
+                
                         
 
-            # Random Process!
+            # Random Process, Randomly Pass! Orz.
             if random_enabled:
                 
-                # print("i:{} j:{}".format(i,j))
-                #curr_fxy = best_D[:][i, j]
+                
                 # We examine patches for i = 0, 1, 2, ... until the current search radius wa i is below 1 pixel.
                 uis = np.array([], dtype=int)  # As this is used as INDEX!
                 R = np.random.uniform(-1, 1, (K, i_max, 2))
@@ -260,21 +251,16 @@ def propagation_and_random_search_k(source_patches, target_patches,
                         #else:
                         tup = (-dists[k][tar_idx], _tiebreaker.next(),
                                tupled_src_coord)  # It's actually with number of target pts
-                        #if tup[0] == f_heap[i][j][0][0]:#: #if truly the new result is smaller
-                        #    continue
-                        #popped = heappushpop(f_heap[i][j], tup)
-                        if tup == heappushpop(f_heap[i][j], tup):
+                        if dists[k][tar_idx] >= -f_heap[i][j][0][0]:
                             continue
+                        
+                        heappushpop(f_heap[i][j], tup)
                         f_coord_dictionary[i][j][tupled_src_coord] = dists[k][tar_idx]
-                        best_D[k][i][j] = dists[k][tar_idx]
-                        new_f[k][i][j] = tupled_src_coord#target_pts[k][tar_idx] - curr_pos#uis[tar_idx]
-                        #curr_fxy = dists[k][tar_idx]
-
-                # 2 * target_patch_shape(2d)
-                #dists = np.append(dists, curr_fxy)
-                #min_dist_idx = np.argmin(dists)
-            
-                #if min_dist_idx != len(dists) - 1:
+                largest = nlargest(K, f_heap[i][j])
+                for k in range(K):
+                    best_D[k][i][j] = -largest[k][0]
+                    new_f[k][i][j] = largest[k][2]#target_pts[k][tar_idx] - curr_pos#uis[tar_idx]
+               
             #############################################
 
     return global_vars
@@ -316,7 +302,6 @@ def propagation_and_random_search_k(source_patches, target_patches,
 # NOTE: This function should NOT check for duplicate entries or out-of-bounds vectors
 # in the heap: it is assumed that the heap returned by this function contains EXACTLY k tuples
 # per pixel, some of which MAY be duplicates or may point outside the image borders
-
 def NNF_matrix_to_NNF_heap(source_patches, target_patches, f_k):
 
     f_heap = None
@@ -338,7 +323,7 @@ def NNF_matrix_to_NNF_heap(source_patches, target_patches, f_k):
             dict = {}
             f_heap[i].append([])
             f_coord_dictionary[i].append({})
-            target_pts = f_k[:,i,j,:]
+            target_pts = f_k[:,i,j,:] + [i,j]
             source_patch = source_patches[i][j]
             target_patch = target_patches[target_pts[..., 0], target_pts[..., 1]]
 
@@ -350,10 +335,10 @@ def NNF_matrix_to_NNF_heap(source_patches, target_patches, f_k):
             #count_for_each_patch = square_diff.shape[-1] * square_diff.shape[-2]
             #ratio = nan_count * 1.0 / count_for_each_patch
 
-            # square_diff[np.isnan((square_diff))] = 65025  # 255^2
             # TODO: weight by existed pixel
             #dists = np.sum(np.nansum(square_diff, axis=-1),
             #               axis=-1) / (1 - ratio)
+            # use just non nan value to compute mean
             square_diff = np.square(source_patch - target_patch)
             square_diff[np.isnan((square_diff))] = 65025  # 255^2
             dists = np.sum(np.sum(square_diff, axis=-1),
@@ -362,8 +347,6 @@ def NNF_matrix_to_NNF_heap(source_patches, target_patches, f_k):
             for each_idx in range(k):
                 # (priority, counter, displacement)
                 displacement = f_k[each_idx][i][j]
-                #Push to Heap!
-
                 priority = -dists[each_idx]
                 counter = _tiebreaker.next()
                 heappush(f_heap[i][j], (priority, counter, displacement))
@@ -389,7 +372,6 @@ def NNF_matrix_to_NNF_heap(source_patches, target_patches, f_k):
 #     - D_k:                 A numpy array of dimensions kxNxM whose element D_k[i][r][c] is the patch distance
 #                            corresponding to the displacement f_k[i][r][c]
 #
-
 def NNF_heap_to_NNF_matrix(f_heap):
     #Impossible to make it vectorized
     #############################################
@@ -411,9 +393,8 @@ def NNF_heap_to_NNF_matrix(f_heap):
     
     return f_k, D_k
 
-
 def nlm(target, f_heap, h):
-
+# Todo: Did I changed the color????
 
     # this is a dummy statement to return the image given as input
     #denoised = target
@@ -421,17 +402,24 @@ def nlm(target, f_heap, h):
     #############################################
     ###  PLACE YOUR CODE BETWEEN THESE LINES  ###
     #############################################
+    coord = make_coordinates_matrix(target.shape)
     f_k, D_k = NNF_heap_to_NNF_matrix(f_heap)
+    target_idxs = coord + f_k
+
+
+    target_patches_reordered = target[target_idxs[..., 0], target_idxs[..., 1]]
     e_item = np.exp(- np.sqrt(D_k) / h ** 2) #Assume D is a distance square here, or square root
     z_item = np.sum(e_item, axis=0) #sigma j
     w_item = np.multiply(e_item, np.reciprocal(z_item)) #TODO: check the dimension
-    denoised_k = np.einsum("ijc,kij->kijc", target, w_item)
-    #denoised_k = np.multiply(target, w_item)
+    target_patches_reordered = np.moveaxis(target_patches_reordered, -1, 0)#3,k,i,j
+    denoised_k_reordered = np.multiply(target_patches_reordered, w_item)
+    denoised_k = np.moveaxis(denoised_k_reordered, 0, -1)#k,i,j,3
     denoised = np.sum(denoised_k, axis=0)
 
     #############################################
 
     return denoised
+
 
 
 
@@ -442,8 +430,7 @@ def nlm(target, f_heap, h):
 #############################################
 
 
-
-#############################################
+############################################
 
 
 
@@ -470,7 +457,6 @@ def nlm(target, f_heap, h):
 
 def reconstruct_source_from_target(target, f):
     rec_source = None
-    print "shape target: " + str(target.shape)
     ################################################
     ###  PLACE YOUR A3 CODE BETWEEN THESE LINES  ###
     ################################################
@@ -479,6 +465,7 @@ def reconstruct_source_from_target(target, f):
 
     # (x, y) + f(x, y)
     target_idxs = coord + f
+    target_idxs = target_idxs.astype(int)
     # TODO: check indexes here.
     rec_source = target[target_idxs[:, :, 0], target_idxs[:, :, 1]]
 
